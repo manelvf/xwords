@@ -32,12 +32,19 @@ class TouchError(Exception):
     pass
 
 
+def init_db():
+    conn = sqlite3.connect("dicionario.db")
+    cursor = conn.cursor()
+
+    return cursor
+
+
 def main():
     global board, new_board
 
     orientation = Tilt.VERTICAL
 
-    cursor, conn = init_db()
+    cursor = init_db()
 
     res = cursor.execute(TOTAL_WORDS)
     total_words = res.fetchone()[0]
@@ -305,12 +312,3 @@ def calculate_filling():
     return total
 
 
-def init_db():
-    conn = sqlite3.connect("dicionario.db")
-    cursor = conn.cursor()
-
-    return cursor, conn
-
-
-if __name__ == "__main__":
-    main()
