@@ -7,9 +7,10 @@ import sqlite3
 RANDOM_WORD = "SELECT word FROM words WHERE rowid=(?)"
 TOTAL_WORDS = "SELECT COUNT(*) FROM words"
 
-COLS = 7
+COLS = 9
 ROWS = 10
 
+MIN_WORD_LENGTH = 3
 TOTAL_LETTERS = 50
 
 word_list = []
@@ -24,8 +25,11 @@ board = []
 for i in range(ROWS):
     board.append([None] * COLS)
 
+new_board = []
 
-new_board = deepcopy(board)
+
+class TouchError(Exception):
+    pass
 
 
 def main():
@@ -42,6 +46,8 @@ def main():
     wx = None
     wy = None
 
+    new_board = deepcopy(board)
+
     i = 10000
     while i:
         i -= 1
@@ -54,6 +60,9 @@ def main():
             continue
 
         word = result[0]
+        if len(word) < MIN_WORD_LENGTH:
+            continue
+
         word = word.replace("á","a").replace("é", "e").replace("í","i").replace("ó", "o").replace("ú", "u").replace("ü", "u")
         print(f"Word: {word}")
 
@@ -118,7 +127,11 @@ def place_word_horizontal(word):
 
             new_board = [row[:] for row in board]
 
-            found = place_horizontal(i, j, word)
+            try:
+                found = place_horizontal(i, j, word)
+            except TouchError:
+                continue
+
             if found:
                 return True, (i, j)
 
@@ -135,7 +148,11 @@ def place_word_vertical(word):
 
             new_board = [row[:] for row in board]
 
-            found = place_vertical(i, j, word)
+            try:
+                found = place_vertical(i, j, word)
+            except TouchError:
+                continue
+
             if found:
                 return True, (j, i)
 
@@ -145,6 +162,8 @@ def place_word_vertical(word):
 def place_vertical(x, y, word):
     global board, new_board
 
+    # new_board = deepcopy(board)
+
     ymax = y + len(word)
     print("Ymax:")
     print(ymax)
@@ -153,8 +172,7 @@ def place_vertical(x, y, word):
 
     found = False
 
-    if check_head_vertical(x, y):
-        return False
+    check_head_vertical(x, y)
 
     c = y
     for i in word:
@@ -165,18 +183,22 @@ def place_vertical(x, y, word):
                 return False
 
             found = True
-
-        if check_tail_vertical(x, y):
-            return False
+        else:
+            check_tail_vertical(x, c)
 
         new_board[c][x] = i
         c += 1
+
+    if c < ROWS and board[c][x]:
+        raise TouchError
 
     return found
 
 
 def place_horizontal(x, y, word):
     global board, new_board
+
+    # new_board = deepcopy(board)
 
     print(f"Placing horizontally {x} {y} {word}")
 
@@ -187,8 +209,7 @@ def place_horizontal(x, y, word):
 
     found = False
 
-    if check_head_horizontal(x, y):
-        return False
+    check_head_horizontal(x, y)
 
     c = x
 
@@ -201,51 +222,46 @@ def place_horizontal(x, y, word):
 
             found = True
         else:
-            if check_tail_horizontal(x, y):
-                return False
+            check_tail_horizontal(c, y)
 
         new_board[y][c] = i
         c += 1
+
+    if c < COLS and board[y][c]:
+        raise TouchError
 
     return found
 
 
 def check_head_vertical(x, y):
-    global board
+    global board, COLS
 
     ym = y-1
     xm = x-1
     xp = x+1
 
     if ym >=0 and board[ym][x]:
-        return True
+        raise TouchError
 
     if xm >= 0 and board[y][xm]:
-        return True
+        raise TouchError
 
     if xp < COLS and board[y][xp]:
-        return True
-
-    return False
+        raise TouchError
 
 
 def check_tail_vertical(x, y):
-    global board
+    global board, COLS
 
-    yp = y+1
     xm = x-1
     xp = x+1
-
-    if yp < ROWS and board[yp][x]:
-        return True
-
+    
     if xm >= 0 and board[y][xm]:
-        return True
+        raise TouchError
 
     if xp < COLS and board[y][xp]:
-        return True
+        raise TouchError
 
-    return False
 
 def check_head_horizontal(x, y):
     global board
@@ -255,15 +271,13 @@ def check_head_horizontal(x, y):
     xm = x-1
 
     if ym >= 0 and board[ym][x]:
-        return True
+        raise TouchError
 
     if yp < ROWS and board[yp][x]:
-        return True
+        raise TouchError
 
     if xm >= 0 and board[y][xm]:
-        return True
-
-    return False
+        raise TouchError
 
 
 def check_tail_horizontal(x, y):
@@ -271,16 +285,12 @@ def check_tail_horizontal(x, y):
 
     ym = y-1
     yp = y+1
-    xp = x+1
 
     if ym > 0 and board[ym][x]:
-        return True
+        raise TouchError
 
     if yp < ROWS and board[yp][x]:
-        return True
-
-    if xp < COLS and board[y][xp]:
-        return True
+        raise TouchError
 
     return False
 
